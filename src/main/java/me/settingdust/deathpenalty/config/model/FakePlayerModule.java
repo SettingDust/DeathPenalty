@@ -21,8 +21,8 @@ public class FakePlayerModule {
     @Setting
     boolean sendMessage = true;
 
-    @Setting(comment = "The ticks of the fake player to keep")
-    int timeToLive = 100;
+    @Setting(comment = "The seconds of the fake player to keep")
+    int timeToLive = 5;
 
     @Setting
     Set<UUID> playerData = Sets.newHashSet();

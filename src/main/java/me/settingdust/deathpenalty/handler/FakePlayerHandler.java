@@ -165,7 +165,7 @@ public class FakePlayerHandler {
                         .filter(entity -> entity instanceof Agent)
                         .map(entity -> (Agent) entity)
                         .forEach(agent -> agent.setTarget(human));
-                    Task.builder().delay(5, TimeUnit.SECONDS).execute((Runnable) human::remove).submit(pluginContainer);
+                    Task.builder().delay(fakePlayerModuleService.getTimeToLive(), TimeUnit.SECONDS).execute((Runnable) human::remove).submit(pluginContainer);
                 }
             );
     }
