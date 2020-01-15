@@ -1,0 +1,45 @@
+plugins {
+    id "org.spongepowered.plugin" version "0.9.0"
+    id "java"
+    id "com.github.johnrengelman.shadow" version "4.0.4"
+}
+
+configurations {
+    group = pluginGroup
+    version = pluginVersion
+    def ci = System.getenv("APPVEYOR_REPO_COMMIT")
+    if (ci) version += "-ci-${ci.substring(0, 8)}"
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+    sponge.plugin.id = pluginId
+    defaultTasks "clean", "build", "shadowJar"
+    tasks.withType(JavaCompile) {
+        options.encoding = "UTF-8"
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "jitpack"
+        url = "https://jitpack.io"
+    }
+}
+
+dependencies {
+    compile("com.github.IzzelAliz:AmberCommon:master-SNAPSHOT") {
+        exclude group: "org.spongepowered"
+    }
+    compileOnly "org.spongepowered:spongeapi:7.1.0"
+    annotationProcessor "org.spongepowered:spongeapi:7.1.0"
+    compile group: "org.projectlombok", name: "lombok", version: "1.18.10"
+    annotationProcessor group: "org.projectlombok", name: "lombok", version: "1.18.10"
+}
+
+shadowJar {
+    minimize()
+    dependencies {
+        it.include it.dependency("com.github.IzzelAliz:.*")
+    }
+}
+
+sponge.plugin.id = pluginId
