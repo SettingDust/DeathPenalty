@@ -7,9 +7,9 @@ import org.spongepowered.api.plugin.Plugin;
 
 @Plugin(
     id = Constants.ID,
-    name = "DeathPenalty",
+    name = "RPG Death",
     version = "2.0",
-    description = "Death with penalty",
+    description = "Death with penalty & spawn fake player after log out",
     authors = { "SettingDust" }
 )
 public class DeathPenalty {
