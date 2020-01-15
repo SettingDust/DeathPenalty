@@ -4,20 +4,24 @@ import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import io.izzel.amber.commons.i18n.AmberLocale;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.AccessLevel;
-import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
+import lombok.SneakyThrows;
 import lombok.val;
 import me.settingdust.deathpenalty.Constants;
 import me.settingdust.deathpenalty.FakePlayerModuleService;
 import org.spongepowered.api.data.key.Keys;
+import org.spongepowered.api.entity.Entity;
 import org.spongepowered.api.entity.EntityTypes;
 import org.spongepowered.api.entity.living.Agent;
 import org.spongepowered.api.entity.living.Human;
 import org.spongepowered.api.entity.living.player.Player;
+import org.spongepowered.api.entity.living.player.User;
+import org.spongepowered.api.entity.Transform;
 import org.spongepowered.api.event.cause.entity.damage.DamageTypes;
 import org.spongepowered.api.event.cause.entity.damage.source.DamageSource;
 import org.spongepowered.api.event.cause.entity.damage.source.DamageSources;
@@ -32,15 +36,16 @@ import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.message.MessageEvent.MessageFormatter;
 import org.spongepowered.api.event.network.ClientConnectionEvent.Disconnect;
 import org.spongepowered.api.event.network.ClientConnectionEvent.Join;
+import org.spongepowered.api.event.network.ClientConnectionEvent.Login;
 import org.spongepowered.api.event.SpongeEventFactory;
 import org.spongepowered.api.plugin.PluginContainer;
 import org.spongepowered.api.scheduler.Task;
 import org.spongepowered.api.service.ServiceManager;
 import org.spongepowered.api.Sponge;
+import org.spongepowered.api.world.World;
 
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class FakePlayerHandler {
-
     PluginContainer pluginContainer;
 
     @Inject
@@ -79,8 +84,24 @@ public class FakePlayerHandler {
     }
 
     @Listener
-    public void onDestructEntity(DestructEntityEvent event) {
-        System.out.println(serviceManager);
+    public void onClientConnectionLogin(
+        Login event,
+        @Getter("getTargetUser") User user,
+        @Getter("getToTransform") Transform<World> toTransform
+    ) {
+        humanSet.removeIf(
+            uuid -> toTransform
+                .getExtent()
+                .getEntity(uuid)
+                .filter(entity -> entity.getCreator().filter(Predicate.isEqual(user.getUniqueId())).isPresent())
+                .filter(
+                    entity -> {
+                        entity.remove();
+                        return true;
+                    }
+                )
+                .isPresent()
+        );
     }
 
     @Listener
@@ -88,34 +109,34 @@ public class FakePlayerHandler {
         if (player.hasPermission(Constants.ID + ".disable.fakeplayer")) {
             return;
         }
+
         serviceManager
             .provide(FakePlayerModuleService.class)
             .filter(fakePlayerModuleService -> fakePlayerModuleService.hasUser(player.getUniqueId()))
             .ifPresent(
                 fakePlayerModuleService -> {
                     fakePlayerModuleService.removeUser(player.getUniqueId());
-                    Sponge.getCauseStackManager().addContext(
-                        EventContextKeys.LAST_DAMAGE_SOURCE,
-                        DamageSource.builder().type(DamageTypes.CUSTOM).bypassesArmor().build()
+
+                    val eventDeath = SpongeEventFactory.createDestructEntityEventDeath(
+                        Sponge
+                            .getCauseStackManager()
+                            .pushCause(player)
+                            .pushCause(DamageSource.builder().type(DamageTypes.CUSTOM).bypassesArmor().build())
+                            .getCurrentCause(),
+                        player.getMessageChannel(),
+                        Optional.of(player.getMessageChannel()),
+                        new MessageFormatter(),
+                        player,
+                        false,
+                        false
                     );
-
-                    player.offer(Keys.HEALTH, 0D);
-                    locale
-                        .get("message.fakePlayer")
-                        .ifPresent(message -> fakePlayerModuleService.sendMessage(player, message));
-
-//                    val eventDeath = SpongeEventFactory.createDestructEntityEventDeath(
-//                        Sponge.getCauseStackManager().getCurrentCause(),
-//                        player.getMessageChannel(),
-//                        Optional.of(player.getMessageChannel()),
-//                        new MessageFormatter(),
-//                        player,
-//                        false,
-//                        false
-//                    );
-//                    if (!eventDeath.isCancelled()) {
-
-//                    }
+                    Sponge.getEventManager().post(eventDeath);
+                    if (!eventDeath.isCancelled()) {
+                        player.offer(Keys.HEALTH, 0D);
+                        locale
+                            .get("message.fakePlayer")
+                            .ifPresent(message -> fakePlayerModuleService.sendMessage(player, message));
+                    }
                 }
             );
     }
