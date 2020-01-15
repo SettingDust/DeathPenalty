@@ -152,6 +152,7 @@ public class DropItemHandler {
                         slot -> slot
                             .peek()
                             .map(ItemStack::createSnapshot)
+                            .filter(itemModuleService::notInWhiteList)
                             // 过滤绑定诅咒物品
                             .filter(
                                 item -> !item.get(Keys.ITEM_ENCHANTMENTS).isPresent() ||
