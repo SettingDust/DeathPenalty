@@ -26,6 +26,7 @@ import org.spongepowered.api.service.ServiceManager;
 @Singleton
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class DropExpHandler {
+
     @Inject
     AmberLocale locale;
 
@@ -37,7 +38,7 @@ public class DropExpHandler {
         eventManager.registerListeners(pluginContainer, this);
     }
 
-    @SuppressWarnings({ "WrapperTypeMayBePrimitive", "OptionalGetWithoutIsPresent" })
+    @SuppressWarnings({"WrapperTypeMayBePrimitive", "OptionalGetWithoutIsPresent"})
     @SneakyThrows
     @Listener(order = Order.LATE)
     public void onDestructEntityDeath(Death event, @After(DamageSource.class) Player player) {
@@ -56,25 +57,27 @@ public class DropExpHandler {
             expToLose = (int) (expToDrop * expModuleService.getLoseRatio());
         }
 
-        player.offer(Keys.TOTAL_EXPERIENCE, player.get(Keys.TOTAL_EXPERIENCE).get() - expToDrop);
-        expToDrop -= expToLose;
+        player.offer(Keys.TOTAL_EXPERIENCE, Math.max(0, totalExp - expToDrop));
 
-        val location = player.getLocation();
-        val entity = location
-            .getExtent()
-            .createEntity(
-                EntityTypes.EXPERIENCE_ORB,
-                location.add(Math.random() * 1.5, Math.random(), Math.random() * 1.5).getPosition()
-            );
-        entity.offer(Keys.CONTAINED_EXPERIENCE, expToDrop);
-        location.getExtent().spawnEntity(entity);
-
-        if (isModuleEnable) {
-            locale
-                .get("message.exp", expToDrop, expToLose)
-                .ifPresent(
-                    message -> serviceManager.provideUnchecked(ExpModuleService.class).sendMessage(player, message)
+        if (totalExp >= expToDrop) {
+            expToDrop -= expToLose;
+            val location = player.getLocation();
+            val entity = location
+                .getExtent()
+                .createEntity(
+                    EntityTypes.EXPERIENCE_ORB,
+                    location.add(Math.random() * 1.5, Math.random(), Math.random() * 1.5).getPosition()
                 );
+            entity.offer(Keys.CONTAINED_EXPERIENCE, expToDrop);
+            location.getExtent().spawnEntity(entity);
+
+            if (isModuleEnable) {
+                locale
+                    .get("message.exp", expToDrop, expToLose)
+                    .ifPresent(
+                        message -> serviceManager.provideUnchecked(ExpModuleService.class).sendMessage(player, message)
+                    );
+            }
         }
     }
 }

@@ -75,6 +75,20 @@ public class DropItemHandler {
                 droppedItems.addAll(getDroppedItems(playerInventory.getEquipment()));
                 droppedItems.addAll(getDroppedItems(playerInventory.getOffhand()));
             }
+
+            int toDrop = itemModuleService.getMinDropCount() - droppedItems.size();
+            if (toDrop > 0) {
+                val slots = playerInventory.slots();
+                StreamSupport
+                    .stream(slots.spliterator(), false)
+                    .sorted(Comparator.comparingInt(Object::hashCode))
+                    .filter(slot -> slot.peek().isPresent())
+                    .filter(slot -> itemModuleService.notInWhiteList(slot.peek().get()))
+                    .limit(toDrop)
+                    .filter(slot -> droppedItems.add(slot.peek().get().createSnapshot()))
+                    .forEach(slot -> slot.set(ItemStack.empty()));
+            }
+
         } else {
             var stackOptional = playerInventory.poll();
             while (stackOptional.isPresent()) {
@@ -175,18 +189,6 @@ public class DropItemHandler {
                                 }
                             )
                     );
-
-                    int toDrop = itemModuleService.getMinDropCount() - droppedItems.size();
-                    if (toDrop > 0) {
-                        StreamSupport
-                            .stream(slots.spliterator(), false)
-                            .sorted(Comparator.comparingInt(Object::hashCode))
-                            .filter(slot -> slot.peek().isPresent())
-                            .filter(slot -> itemModuleService.notInWhiteList(slot.peek().get()))
-                            .limit(toDrop)
-                            .filter(slot -> droppedItems.add(slot.peek().get().createSnapshot()))
-                            .forEach(slot -> slot.set(ItemStack.empty()));
-                    }
                 }
             );
         return droppedItems;
